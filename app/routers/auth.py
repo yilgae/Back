@@ -4,17 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
-import os
-
-# ★ 바뀐 경로들로 import
+# import models  <-- [삭제됨] 이 줄이 에러의 원인이었습니다!
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, SECRET_KEY, ALGORITHM
-from app.models import contract, schemas # models 폴더 안의 파일들
+from app.models import contract, schemas 
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# ★ get_current_user 함수도 여기서 정의하거나 core/security.py 로 빼도 됨 (일단 여기 둠)
+# --- [로그인한 사용자 확인 함수] ---
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -24,14 +23,45 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None: raise credentials_exception
+        if email is None:
+            raise credentials_exception
     except JWTError:
         raise credentials_exception
     
     user = db.query(contract.User).filter(contract.User.email == email).first()
-    if user is None: raise credentials_exception
+    if user is None:
+        raise credentials_exception
     return user
 
-# ... (signup, login, me 함수들은 기존 auth.py 로직 그대로 쓰되, 
-#      models.User 대신 contract.User, 
-#      UserCreate 대신 schemas.UserCreate 등을 사용하도록 수정) ...
+# --- [API 엔드포인트] ---
+
+@router.post("/signup", response_model=schemas.UserResponse)
+def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(contract.User).filter(contract.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="이미 등록된 이메일입니다.")
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = contract.User(email=user.email, hashed_password=hashed_password, name=user.name)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    return new_user
+
+@router.post("/login", response_model=schemas.Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(contract.User).filter(contract.User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="이메일 또는 비밀번호가 틀렸습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=schemas.UserResponse)
+def read_users_me(current_user: contract.User = Depends(get_current_user)):
+    return current_user

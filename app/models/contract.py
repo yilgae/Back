@@ -10,6 +10,7 @@ import datetime
 # SQLite에서 UUID를 저장하기 위한 호환성 설정 (복잡해 보이면 무시하셔도 됩니다)
 class GUID(TypeDecorator):
     impl = CHAR
+    cache_ok = True  # <--- 이 줄을 추가하면 경고가 사라집니다.
     def load_dialect_impl(self, dialect):
         return dialect.type_descriptor(CHAR(36))
     def process_bind_param(self, value, dialect):

@@ -3,6 +3,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
+import uuid
 
 # --- User 관련 ---
 class UserCreate(BaseModel):
@@ -11,7 +12,7 @@ class UserCreate(BaseModel):
     name: str
 
 class UserResponse(BaseModel):
-    id: str
+    id: uuid.UUID  # str 대신 uuid.UUID로 변경
     email: str
     name: str
     class Config:
