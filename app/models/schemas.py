@@ -24,7 +24,7 @@ class Token(BaseModel):
 
 # --- Document 관련 ---
 class DocumentResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     filename: str
     status: str
     created_at: datetime
