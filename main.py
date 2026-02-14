@@ -7,6 +7,13 @@ import fitz  # PyMuPDF (PDF 처리용)
 from openai import OpenAI
 from dotenv import load_dotenv
 import json
+from sqlalchemy.orm import Session # 추가됨
+
+from database import engine, get_db
+import models
+
+# ★ 서버 시작 시 DB 테이블 자동 생성
+models.Base.metadata.create_all(bind=engine)
 
 # 1. .env 파일에서 API 키 불러오기
 load_dotenv()
