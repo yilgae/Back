@@ -18,14 +18,15 @@ async def analyze_document(
     db: Session = Depends(get_db),
     current_user: contract.User = Depends(get_current_user)
 ):
-    # 1. 파일 읽기
     content_bytes = await file.read()
+    print(f"\n[DEBUG 1] 파일 읽기 완료: {file.filename} ({len(content_bytes)} bytes)")
     
-    # 2. 콘텐츠 추출 (텍스트 혹은 이미지 Base64 리스트)
     parsed_data = extract_content_from_pdf(content_bytes)
+    print(f"[DEBUG 2] PDF 추출 타입: {parsed_data['type']}")
     
-    # 3. AI 분석 요청 (Vision 기능 포함)
+    # AI 분석 전 데이터 확인
     ai_result = analyze_contract(parsed_data)
+    print(f"[DEBUG 3] AI 분석 결과 수신: {ai_result}") # <--- 여기가 []인지 확인!
     
     # 4. DB 저장 프로세스
     # (1) 문서 레코드 생성

@@ -5,6 +5,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+print(f"🔑 API KEY 확인: {api_key[:5]}*****") # 키가 제대로 로드되는지 확인
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def analyze_contract(data: dict) -> dict:
