@@ -1,14 +1,48 @@
-﻿from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from sqlalchemy.orm import Session
+﻿from typing import List
 import uuid
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
-from app.services.pdf_parser import extract_content_from_pdf
-from app.services.analyzer import analyze_contract
 from app.models import contract, schemas
 from app.routers.auth import get_current_user
+from app.services.analyzer import analyze_contract
+from app.services.pdf_parser import extract_content_from_pdf
 
 router = APIRouter(prefix='/api/analyze', tags=['Analyze'])
+
+
+@router.get('', response_model=List[schemas.DocumentResponse])
+def list_documents(
+    db: Session = Depends(get_db),
+    current_user: contract.User = Depends(get_current_user),
+):
+    docs = (
+        db.query(contract.Document)
+        .filter(contract.Document.owner_id == current_user.id)
+        .order_by(contract.Document.created_at.desc())
+        .all()
+    )
+
+    results: List[schemas.DocumentResponse] = []
+    for doc in docs:
+        risk_count = 0
+        for clause in doc.clauses:
+            if clause.analysis and clause.analysis.risk_level == 'HIGH':
+                risk_count += 1
+
+        results.append(
+            schemas.DocumentResponse(
+                id=doc.id,
+                filename=doc.filename,
+                status=doc.status,
+                created_at=doc.created_at,
+                risk_count=risk_count,
+            )
+        )
+
+    return results
 
 
 @router.post('', response_model=schemas.DocumentResponse)
