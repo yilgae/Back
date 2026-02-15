@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import uuid
@@ -9,12 +10,15 @@ from sqlalchemy.orm import Session
 from app.models.contract import Clause, ClauseAnalysis, ClauseEmbedding, Document
 from app.services.analyzer import _get_client
 
+logger = logging.getLogger(__name__)
+
 EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_QDRANT_COLLECTION = "readgye_clause_embeddings"
 
 _QDRANT_CLIENT = None
 _QDRANT_IMPORT_FAILED = False
 _ENSURED_COLLECTIONS: set[str] = set()
+_INDEXED_FIELDS: set[str] = set()
 
 
 def _build_embedding_text(clause: Clause, analysis: Optional[ClauseAnalysis]) -> str:
@@ -59,6 +63,7 @@ def _get_qdrant_client():
         from qdrant_client import QdrantClient
     except Exception:
         _QDRANT_IMPORT_FAILED = True
+        logger.warning("qdrant-client 패키지를 임포트할 수 없습니다. Qdrant 비활성화.")
         return None
 
     url = (os.getenv("QDRANT_URL") or "").strip()
@@ -74,9 +79,37 @@ def _get_qdrant_client():
                 base_dir = Path(__file__).resolve().parents[2]
                 local_path = str(base_dir / ".qdrant")
             _QDRANT_CLIENT = QdrantClient(path=local_path, timeout=timeout)
+        logger.info("Qdrant 클라이언트 연결 성공 (url=%s, local=%s)", url or "(없음)", local_path or "(없음)")
         return _QDRANT_CLIENT
-    except Exception:
+    except Exception as e:
+        logger.error("Qdrant 클라이언트 생성 실패: %s", e)
         return None
+
+
+def _ensure_payload_indexes(collection: str) -> None:
+    """user_id, document_id 필드에 payload 인덱스를 생성하여 필터 성능 향상."""
+    client = _get_qdrant_client()
+    if client is None:
+        return
+
+    cache_key = f"{collection}:payload_indexes"
+    if cache_key in _INDEXED_FIELDS:
+        return
+
+    from qdrant_client.http import models as qmodels
+
+    for field_name in ("user_id", "document_id"):
+        try:
+            client.create_payload_index(
+                collection_name=collection,
+                field_name=field_name,
+                field_schema=qmodels.PayloadSchemaType.KEYWORD,
+            )
+        except Exception:
+            # 이미 존재하는 경우 무시
+            pass
+
+    _INDEXED_FIELDS.add(cache_key)
 
 
 def _ensure_qdrant_collection(vector_size: int) -> None:
@@ -101,9 +134,11 @@ def _ensure_qdrant_collection(vector_size: int) -> None:
                     distance=qmodels.Distance.COSINE,
                 ),
             )
+            logger.info("Qdrant 컬렉션 생성: %s (size=%d)", collection, vector_size)
         _ENSURED_COLLECTIONS.add(collection)
-    except Exception:
-        return
+        _ensure_payload_indexes(collection)
+    except Exception as e:
+        logger.error("Qdrant 컬렉션 확인/생성 실패: %s", e)
 
 
 def _upsert_qdrant_clause(
@@ -143,8 +178,8 @@ def _upsert_qdrant_clause(
     )
     try:
         client.upsert(collection_name=collection, points=[point], wait=False)
-    except Exception:
-        return
+    except Exception as e:
+        logger.error("Qdrant upsert 실패 (clause_id=%s): %s", clause.id, e)
 
 
 def search_similar_clauses(
@@ -186,7 +221,8 @@ def search_similar_clauses(
             score_threshold=score_threshold,
             with_payload=True,
         )
-    except Exception:
+    except Exception as e:
+        logger.error("Qdrant 검색 실패 (user_id=%s): %s", user_id, e)
         return []
 
     results: list[tuple[uuid.UUID, float]] = []
@@ -215,6 +251,7 @@ def upsert_clause_embedding(
 
     embedding = create_query_embedding(content)
     if not embedding:
+        logger.warning("임베딩 생성 실패 (clause_id=%s)", clause.id)
         return
 
     existing = (
@@ -258,12 +295,16 @@ def backfill_user_embeddings(
     user_id: uuid.UUID,
     document_id: Optional[uuid.UUID] = None,
 ) -> int:
+    from sqlalchemy import outerjoin
+
     query = (
         db.query(Clause, ClauseAnalysis, Document)
         .join(ClauseAnalysis, ClauseAnalysis.clause_id == Clause.id)
         .join(Document, Document.id == Clause.document_id)
+        .outerjoin(ClauseEmbedding, ClauseEmbedding.clause_id == Clause.id)
         .filter(Document.owner_id == user_id)
         .filter(Document.status == "done")
+        .filter(ClauseEmbedding.id.is_(None))  # 임베딩이 없는 조항만
     )
     if document_id:
         query = query.filter(Document.id == document_id)
@@ -279,4 +320,6 @@ def backfill_user_embeddings(
             document_id=doc.id,
         )
         count += 1
+
+    logger.info("backfill 완료: user_id=%s, 새로 임베딩된 조항 %d개", user_id, count)
     return count

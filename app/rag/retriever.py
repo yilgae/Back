@@ -2,6 +2,7 @@
 # Qdrant 기반 검색 + fallback + threshold + rerank + citation
 
 import json
+import logging
 import math
 import re
 import uuid
@@ -12,6 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.models.contract import Clause, ClauseAnalysis, ClauseEmbedding, Document
 from app.rag.vectorstore import create_query_embedding, search_similar_clauses
+
+logger = logging.getLogger(__name__)
 
 MAX_CLAUSES = 50
 MAX_VECTOR_CANDIDATES = 500
@@ -171,7 +174,8 @@ def _fallback_bruteforce_search(
             sim = _cosine_similarity(query_embedding, emb)
             if sim >= min_similarity:
                 scored.append((sim, item.clause_id))
-        except Exception:
+        except Exception as e:
+            logger.warning("brute-force 임베딩 파싱 실패 (clause_id=%s): %s", item.clause_id, e)
             continue
 
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -227,6 +231,7 @@ def retrieve_relevant_context(
         score_threshold=min_similarity,
     )
     if not vector_hits:
+        logger.info("Qdrant 검색 결과 없음 → brute-force fallback 시도 (user_id=%s)", user_id)
         vector_hits = _fallback_bruteforce_search(
             db=db,
             user_id=user_id,

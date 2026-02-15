@@ -16,10 +16,6 @@ def _get_client() -> OpenAI:
         raise RuntimeError('OPENAI_API_KEY is missing in BE/.env')
     return OpenAI(api_key=api_key)
 
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-print(f"🔑 API KEY 확인: {api_key[:5]}*****") # 키가 제대로 로드되는지 확인
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def analyze_contract(data: dict) -> dict:
     """텍스트 또는 이미지 데이터를 받아 계약 조항을 분석합니다."""
@@ -28,9 +24,10 @@ def analyze_contract(data: dict) -> dict:
     반드시 아래 JSON 포맷으로만 응답해:
     {
         "clauses": [
-            { "clause_number": "제N조", "title": "조항 제목", "risk_level": "HIGH/MEDIUM/LOW", "summary": "위험 요약", "suggestion": "수정 제안" }
+            { "clause_number": "제N조", "title": "조항 제목", "body": "해당 조항의 원문 전체 텍스트", "risk_level": "HIGH/MEDIUM/LOW", "summary": "위험 요약", "suggestion": "수정 제안" }
         ]
     }
+    중요: "body" 필드에는 해당 조항의 원문 텍스트를 최대한 그대로 포함해야 해. 원문이 없으면 빈 문자열로 남겨.
     """
 
     content = [{"type": "text", "text": "이 계약서를 분석해서 독소 조항을 찾아줘."}]

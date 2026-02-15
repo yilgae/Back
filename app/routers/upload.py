@@ -88,7 +88,7 @@ async def analyze_document(
                 document_id=new_doc.id,
                 clause_number=item.get('clause_number', '미분류'),
                 title=item.get('title', '제목 없음'),
-                body='',
+                body=item.get('body', ''),
             )
             db.add(new_clause)
             db.flush()
@@ -130,8 +130,19 @@ async def analyze_document(
 
 
 @router.get('/{document_id}/result')
-def get_analysis_detail(document_id: uuid.UUID, db: Session = Depends(get_db)):
-    doc = db.query(contract.Document).filter(contract.Document.id == document_id).first()
+def get_analysis_detail(
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: contract.User = Depends(get_current_user),
+):
+    doc = (
+        db.query(contract.Document)
+        .filter(
+            contract.Document.id == document_id,
+            contract.Document.owner_id == current_user.id,
+        )
+        .first()
+    )
     if not doc:
         raise HTTPException(status_code=404, detail='문서를 찾을 수 없습니다.')
 
