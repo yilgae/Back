@@ -16,6 +16,10 @@ def _get_client() -> OpenAI:
         raise RuntimeError('OPENAI_API_KEY is missing in BE/.env')
     return OpenAI(api_key=api_key)
 
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+print(f"🔑 API KEY 확인: {api_key[:5]}*****") # 키가 제대로 로드되는지 확인
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def analyze_contract(data: dict) -> dict:
     """텍스트 또는 이미지 데이터를 받아 계약 조항을 분석합니다."""
