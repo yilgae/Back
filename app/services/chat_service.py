@@ -1,14 +1,17 @@
 # app/services/chat_service.py
 # RAG 챗봇 핵심 로직: 컨텍스트 구성 → GPT 호출 → 대화 저장
 
+import logging
 import uuid
 from typing import Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from app.models.contract import ChatMessage, ChatSession
-from app.rag.retriever import build_contract_context
+from app.rag.retriever import retrieve_relevant_context
 from app.services.analyzer import _get_client
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT_TEMPLATE = """너는 "읽계 AI"라는 법률 계약서 분석 AI 상담사야.
 
@@ -31,6 +34,7 @@ SYSTEM_PROMPT_TEMPLATE = """너는 "읽계 AI"라는 법률 계약서 분석 AI 
 """
 
 MAX_HISTORY_MESSAGES = 10  # 멀티턴 컨텍스트에 포함할 최근 메시지 수
+MAX_CONTEXT_CHARS = 12000  # 컨텍스트 최대 글자수 (gpt-4o-mini 128k 기준 여유 확보)
 
 
 def get_or_create_session(
@@ -67,7 +71,10 @@ def chat_with_context(
     user_message: str,
     session_id: Optional[uuid.UUID] = None,
     document_id: Optional[uuid.UUID] = None,
-) -> Tuple[ChatSession, ChatMessage]:
+    top_k: int = 6,
+    min_similarity: float = 0.35,
+    use_rerank: bool = True,
+) -> Tuple[ChatSession, ChatMessage, list]:
     """
     채팅 메시지 처리 전체 파이프라인:
     1. 세션 관리
@@ -80,9 +87,21 @@ def chat_with_context(
     session = get_or_create_session(db, user_id, session_id, document_id)
     effective_doc_id = document_id or session.document_id
 
-    # 2. 계약서 컨텍스트 구성
-    context = build_contract_context(db, user_id, effective_doc_id)
-    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(context=context)
+    # 2. 질문 기반 벡터 검색 컨텍스트 구성 (실패 시 내부 fallback)
+    retrieval = retrieve_relevant_context(
+        db=db,
+        user_id=user_id,
+        query_text=user_message,
+        document_id=effective_doc_id,
+        top_k=top_k,
+        min_similarity=min_similarity,
+        use_rerank=use_rerank,
+    )
+    context_text = retrieval.context
+    if len(context_text) > MAX_CONTEXT_CHARS:
+        context_text = context_text[:MAX_CONTEXT_CHARS] + "\n\n... (일부 생략됨)"
+        logger.warning("컨텍스트 길이 초과 → %d자로 잘림 (session=%s)", MAX_CONTEXT_CHARS, session.id)
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(context=context_text)
 
     # 3. 대화 히스토리 로드
     history = (
@@ -112,6 +131,9 @@ def chat_with_context(
 
     # 6. GPT 호출
     client = _get_client()
+    total_chars = sum(len(m["content"]) for m in messages)
+    logger.info("GPT 호출: 메시지 %d개, 총 %d자 (session=%s)", len(messages), total_chars, session.id)
+
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
@@ -123,6 +145,14 @@ def chat_with_context(
         response.choices[0].message.content
         or "죄송합니다, 응답을 생성하지 못했습니다."
     )
+
+    if response.usage:
+        logger.info(
+            "GPT 토큰 사용: prompt=%d, completion=%d, total=%d",
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens,
+            response.usage.total_tokens,
+        )
 
     # 7. AI 응답 저장
     assistant_msg = ChatMessage(
@@ -138,4 +168,4 @@ def chat_with_context(
     if len(history) == 0:
         session.title = user_message[:50]
 
-    return session, assistant_msg
+    return session, assistant_msg, retrieval.citations

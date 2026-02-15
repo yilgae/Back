@@ -1,4 +1,4 @@
-﻿from typing import List
+﻿from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import contract, schemas
+from app.rag.vectorstore import backfill_user_embeddings, upsert_clause_embedding
 from app.routers.auth import get_current_user
 from app.services.analyzer import analyze_contract
 from app.services.pdf_parser import extract_content_from_pdf
@@ -87,7 +88,7 @@ async def analyze_document(
                 document_id=new_doc.id,
                 clause_number=item.get('clause_number', '미분류'),
                 title=item.get('title', '제목 없음'),
-                body='',
+                body=item.get('body', ''),
             )
             db.add(new_clause)
             db.flush()
@@ -104,6 +105,15 @@ async def analyze_document(
                 suggestion=item.get('suggestion', ''),
             )
             db.add(new_analysis)
+            db.flush()
+
+            upsert_clause_embedding(
+                db=db,
+                clause=new_clause,
+                analysis=new_analysis,
+                user_id=current_user.id,
+                document_id=new_doc.id,
+            )
 
         db.refresh(new_doc)
         return schemas.DocumentResponse(
@@ -120,8 +130,19 @@ async def analyze_document(
 
 
 @router.get('/{document_id}/result')
-def get_analysis_detail(document_id: uuid.UUID, db: Session = Depends(get_db)):
-    doc = db.query(contract.Document).filter(contract.Document.id == document_id).first()
+def get_analysis_detail(
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: contract.User = Depends(get_current_user),
+):
+    doc = (
+        db.query(contract.Document)
+        .filter(
+            contract.Document.id == document_id,
+            contract.Document.owner_id == current_user.id,
+        )
+        .first()
+    )
     if not doc:
         raise HTTPException(status_code=404, detail='문서를 찾을 수 없습니다.')
 
@@ -138,3 +159,19 @@ def get_analysis_detail(document_id: uuid.UUID, db: Session = Depends(get_db)):
         )
 
     return {'filename': doc.filename, 'analysis': results}
+
+
+@router.post('/backfill-embeddings')
+def backfill_embeddings(
+    document_id: Optional[uuid.UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: contract.User = Depends(get_current_user),
+):
+    """기존 분석 데이터에 대해 임베딩을 재생성한다."""
+    count = backfill_user_embeddings(
+        db=db,
+        user_id=current_user.id,
+        document_id=document_id,
+    )
+    return {'indexed_count': count}
+
