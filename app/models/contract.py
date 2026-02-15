@@ -24,9 +24,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    email = Column(String, unique=True, index=True)  # 이메일은 중복 불가
-    hashed_password = Column(String)                 # 비밀번호는 암호화해서 저장
-    name = Column(String)                            # 사용자 이름 (홍길동)
+    email = Column(String(255), unique=True, index=True)
+    hashed_password = Column(String(255))
+    name = Column(String(100))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # 문서와의 관계 설정 (사용자가 삭제되면 문서도 삭제? or 유지? -> 일단 유지)
@@ -37,8 +37,8 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
-    filename = Column(String, index=True) # 파일명 추가
-    status = Column(String, default="uploaded") # uploaded, analyzing, done, failed
+    filename = Column(String(500), index=True)
+    status = Column(String(20), default="uploaded")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     owner_id = Column(GUID(), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents")
@@ -52,9 +52,9 @@ class Clause(Base):
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     document_id = Column(GUID(), ForeignKey("documents.id"))
-    clause_number = Column(String) # 제1조
-    title = Column(String)         # 목적
-    body = Column(Text)            # 본문 내용
+    clause_number = Column(String(50))
+    title = Column(String(300))
+    body = Column(Text)
     
     # 관계 설정
     document = relationship("Document", back_populates="clauses")
@@ -67,7 +67,7 @@ class ClauseAnalysis(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     clause_id = Column(GUID(), ForeignKey("clauses.id"))
     
-    risk_level = Column(String) # HIGH, MEDIUM, LOW
+    risk_level = Column(String(10))
     summary = Column(Text)      # 위험 요약
     suggestion = Column(Text)   # 수정 제안
     
@@ -84,7 +84,7 @@ class ClauseEmbedding(Base):
     clause_id = Column(GUID(), ForeignKey("clauses.id"), unique=True, index=True)
     user_id = Column(GUID(), ForeignKey("users.id"), index=True)
     document_id = Column(GUID(), ForeignKey("documents.id"), index=True)
-    embedding_model = Column(String, default="text-embedding-3-small")
+    embedding_model = Column(String(100), default="text-embedding-3-small")
     embedding_json = Column(Text)  # JSON serialized float list
     content = Column(Text)  # embedding source text
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -100,7 +100,7 @@ class ChatSession(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUID(), ForeignKey("users.id"))
     document_id = Column(GUID(), ForeignKey("documents.id"), nullable=True)  # 특정 문서 범위 (선택)
-    title = Column(String, default="새 상담")
+    title = Column(String(200), default="새 상담")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     user = relationship("User")
@@ -113,7 +113,7 @@ class ChatMessage(Base):
 
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     session_id = Column(GUID(), ForeignKey("chat_sessions.id"))
-    role = Column(String)    # "user" or "assistant"
+    role = Column(String(20))
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

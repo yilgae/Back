@@ -2,3 +2,10 @@ fastapi
 uvicorn[standard]
 python-multipart
 qdrant-client
+sqlalchemy
+pymysql
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+openai
+PyMuPDF

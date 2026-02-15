@@ -10,10 +10,13 @@ load_dotenv(ENV_PATH, override=True)
 
 
 def _get_client() -> OpenAI:
-    env_file_values = dotenv_values(ENV_PATH)
-    api_key = (env_file_values.get('OPENAI_API_KEY') or os.getenv('OPENAI_API_KEY', '')).strip()
+    # Railway 등 배포 환경: 환경변수 우선, 로컬: .env 파일 폴백
+    api_key = os.getenv('OPENAI_API_KEY', '').strip()
     if not api_key:
-        raise RuntimeError('OPENAI_API_KEY is missing in BE/.env')
+        env_file_values = dotenv_values(ENV_PATH)
+        api_key = (env_file_values.get('OPENAI_API_KEY') or '').strip()
+    if not api_key:
+        raise RuntimeError('OPENAI_API_KEY is missing')
     return OpenAI(api_key=api_key)
 
 
