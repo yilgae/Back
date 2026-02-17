@@ -70,9 +70,10 @@ def _send_contact_email(
                 server.login(smtp_user, smtp_password)
                 server.sendmail(sender_email, [recipient_email], message.as_string())
     except Exception as exc:
+        print(f"[CONTACT ERROR] 메일 발송 실패: {type(exc).__name__}: {exc}")
         raise HTTPException(
             status_code=502,
-            detail="문의 메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+            detail=f"문의 메일 발송에 실패했습니다: {exc}",
         ) from exc
 
 
