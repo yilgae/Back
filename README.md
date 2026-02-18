@@ -1,19 +1,18 @@
 <div align="center">
-  <img width="300" height="300" alt="knockknock_logo" src="https://github.com/user-attachments/assets/6203ac63-1c3c-4a35-94c6-f45cda3cc067" />
-
-  <img width="311" height="673" alt="image" src="https://github.com/user-attachments/assets/7fab5d42-caff-4507-9f2a-938027272f9e" />
-
-<img width="313" height="673" alt="image" src="https://github.com/user-attachments/assets/5baee585-ecbc-4fbd-96ae-64bb600ba8f0" />
-
-
-<img width="315" height="673" alt="image" src="https://github.com/user-attachments/assets/3a418540-5733-44d9-b11d-aae45c404b82" />
-
-
-<img width="312" height="675" alt="image" src="https://github.com/user-attachments/assets/d419e3f2-2152-4b85-8744-093f2486d929" />
-
+  <img width="180" height="180" alt="똑똑_logo" src="https://github.com/user-attachments/assets/6203ac63-1c3c-4a35-94c6-f45cda3cc067" />
   <h1>똑똑 (KnockKnock)</h1>
   <p><strong>계약서 읽어주는 AI</strong></p>
   <p>계약서 PDF를 업로드하면 AI가 독소 조항을 찾아주고,<br/>분석 결과를 바탕으로 법률 상담 챗봇과 대화할 수 있는 서비스입니다.</p>
+
+  <br/>
+
+  <img width="200" alt="홈 화면" src="https://github.com/user-attachments/assets/7fab5d42-caff-4507-9f2a-938027272f9e" />
+  &nbsp;
+  <img width="200" alt="분석 결과" src="https://github.com/user-attachments/assets/5baee585-ecbc-4fbd-96ae-64bb600ba8f0" />
+  &nbsp;
+  <img width="200" alt="AI 상담" src="https://github.com/user-attachments/assets/3a418540-5733-44d9-b11d-aae45c404b82" />
+  &nbsp;
+  <img width="200" alt="보관함" src="https://github.com/user-attachments/assets/d419e3f2-2152-4b85-8744-093f2486d929" />
 </div>
 
 ---
