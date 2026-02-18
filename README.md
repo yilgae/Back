@@ -1,6 +1,6 @@
 <div align="center">
-  <img width="300" height="300" alt="읽계_logo" src="https://github.com/user-attachments/assets/49584f5b-3378-4808-bac5-03782adc9ea7" />
-  <h1>읽계 (ReadGye)</h1>
+  <img width="300" height="300" alt="똑똑_logo" src="https://github.com/user-attachments/assets/6203ac63-1c3c-4a35-94c6-f45cda3cc067" />
+  <h1>똑똑 (KnockKnock)</h1>
   <p><strong>계약서 읽어주는 AI</strong></p>
   <p>계약서 PDF를 업로드하면 AI가 독소 조항을 찾아주고,<br/>분석 결과를 바탕으로 법률 상담 챗봇과 대화할 수 있는 서비스입니다.</p>
 </div>
@@ -20,7 +20,7 @@
 
 ### 해결 방안
 
-읽계는 AI 기술을 활용하여 누구나 쉽고 빠르게 계약서를 이해할 수 있도록 만들었습니다.
+똑똑은 AI 기술을 활용하여 누구나 쉽고 빠르게 계약서를 이해할 수 있도록 만들었습니다.
 
 - **AI 자동 분석**: 계약서 PDF를 업로드하면 GPT-4o-mini가 조항별로 위험도를 분석합니다. 위험(HIGH), 주의(MEDIUM), 안전(LOW)으로 한눈에 파악할 수 있습니다.
 - **쉬운 설명 + 수정안 제시**: 독소 조항이 왜 위험한지 쉬운 말로 설명하고, 구체적인 수정 문구까지 제안합니다.
