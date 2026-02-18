@@ -1,7 +1,8 @@
 <div align="center">
   <img width="300" height="300" alt="knockknock_logo" src="https://github.com/user-attachments/assets/6203ac63-1c3c-4a35-94c6-f45cda3cc067" />
-  <h1>읽계 (ReadGye)</h1>
-
+ <div align="center">
+  <img width="300" height="300" alt="똑똑_logo" src="https://github.com/user-attachments/assets/49584f5b-3378-4808-bac5-03782adc9ea7" />
+  <h1>똑똑 (KnockKnock)</h1>
   <p><strong>계약서 읽어주는 AI</strong></p>
   <p>계약서 PDF를 업로드하면 AI가 독소 조항을 찾아주고,<br/>분석 결과를 바탕으로 법률 상담 챗봇과 대화할 수 있는 서비스입니다.</p>
 </div>
@@ -21,11 +22,12 @@
 
 ### 해결 방안
 
-읽계는 AI 기술을 활용하여 누구나 쉽고 빠르게 계약서를 이해할 수 있도록 만들었습니다.
+똑똑은 AI 기술을 활용하여 누구나 쉽고 빠르게 계약서를 이해할 수 있도록 만들었습니다.
 
-- **AI 자동 분석**: 계약서 PDF를 업로드하면 GPT-4o-mini가 조항별로 위험도를 분석합니다. 위험(HIGH), 주의(MEDIUM), 안전(LOW)으로 한눈에 파악할 수 있습니다.
+- **카테고리별 전문 AI 분석**: 근로, 소비자, 부동산, NDA 등 5가지 계약 유형에 특화된 OpenAI Assistants API가 조항별 위험도를 분석합니다.
+- **스캔본 지원**: 텍스트 추출이 불가능한 스캔 PDF도 GPT-4o Vision으로 자동 분석합니다.
 - **쉬운 설명 + 수정안 제시**: 독소 조항이 왜 위험한지 쉬운 말로 설명하고, 구체적인 수정 문구까지 제안합니다.
-- **RAG 기반 맞춤 상담**: 분석된 계약서 데이터를 기반으로 AI 챗봇이 추가 질문에 답변합니다. "제3조가 왜 위험한가요?", "이 조항을 어떻게 수정하면 좋을까요?" 같은 후속 질문에 즉시 응답합니다.
+- **RAG 기반 맞춤 상담**: Qdrant 벡터 DB로 분석된 조항을 검색하여 AI 챗봇이 후속 질문에 정확하게 답변합니다.
 
 ---
 
@@ -33,9 +35,12 @@
 
 | 기능 | 설명 |
 |------|------|
-| **PDF 계약서 분석** | PDF 업로드 → 텍스트/이미지 추출 → GPT-4o-mini가 조항별 위험도 분석 |
-| **RAG 법률 상담 챗봇** | 분석된 계약서 데이터를 활용한 맞춤형 AI 법률 상담 |
-| **문서 관리** | 분석 이력 보관, 검색, 필터링 |
+| **카테고리별 계약서 분석** | 근로 / 소비자 / NDA / 부동산 / 기타 5가지 유형에 특화된 AI 분석 |
+| **스캔본 자동 처리** | 텍스트 추출 불가 시 GPT-4o Vision으로 자동 전환 |
+| **RAG 법률 상담 챗봇** | Qdrant 벡터 검색 + 하이브리드 재정렬로 맥락에 맞는 AI 상담 |
+| **실시간 알림** | 분석 완료 시 앱 내 푸시 알림 (8초 폴링) |
+| **문서 보관함** | 분석 이력 보관, 검색, 위험도 필터링 |
+| **문의 / 관리자 기능** | 사용자 문의 접수 및 관리자 답변 처리 |
 
 ---
 
@@ -43,8 +48,12 @@
 
 ### 백엔드
 - **Python 3.11** + **FastAPI**
-- **SQLAlchemy** + **SQLite**
-- **OpenAI GPT-4o-mini** (계약서 분석 + 챗봇)
+- **SQLAlchemy** + **MySQL** (Railway 배포) / SQLite (로컬)
+- **OpenAI Assistants API** (카테고리별 계약서 분석)
+- **OpenAI GPT-4o** (스캔본 Vision 분석)
+- **OpenAI GPT-4o-mini** (RAG 챗봇)
+- **OpenAI text-embedding-3-small** (벡터 임베딩)
+- **Qdrant** (벡터 DB)
 - **PyMuPDF** (PDF 텍스트/이미지 추출)
 - **PyJWT** + **bcrypt** (인증)
 
@@ -53,6 +62,13 @@
 - **TypeScript 5.9**
 - **React Navigation 7** (Bottom Tabs + Native Stack)
 - **AsyncStorage** (로컬 저장소)
+- **Google Sign-In** (@react-native-google-signin)
+- **Expo Document Picker** (PDF 파일 선택)
+
+### 배포
+- **백엔드**: Railway
+- **앱**: Google Play Store (Android) — 패키지명 `com.knockknock.app`
+- **빌드**: EAS Build (Expo)
 
 ---
 
@@ -60,49 +76,70 @@
 
 ```
 yilgae/
-├── BE/                              # 백엔드
+├── BE/                                   # 백엔드
 │   ├── app/
-│   │   ├── main.py                  # FastAPI 앱 진입점
+│   │   ├── main.py                       # FastAPI 앱 진입점
 │   │   ├── core/
-│   │   │   ├── database.py          # SQLAlchemy 설정
-│   │   │   └── security.py          # JWT, 비밀번호 해싱
+│   │   │   ├── database.py               # SQLAlchemy 설정
+│   │   │   └── security.py               # JWT, 비밀번호 해싱
 │   │   ├── models/
-│   │   │   ├── contract.py          # DB 테이블 정의 (ORM)
-│   │   │   └── schemas.py           # 요청/응답 스키마 (Pydantic)
+│   │   │   ├── contract.py               # DB 테이블 정의 (ORM)
+│   │   │   └── schemas.py                # 요청/응답 스키마 (Pydantic)
 │   │   ├── routers/
-│   │   │   ├── auth.py              # 인증 API (/api/auth)
-│   │   │   ├── upload.py            # 분석 API (/api/analyze)
-│   │   │   └── chat.py              # 챗봇 API (/api/chat)
+│   │   │   ├── auth.py                   # 인증 API (/api/auth)
+│   │   │   ├── upload.py                 # 문서 목록/결과 조회 (/api/analyze)
+│   │   │   ├── documents.py              # 문서 삭제 (/api/analyze/{id})
+│   │   │   ├── general.py                # 일반 계약 분석 (/api/general)
+│   │   │   ├── real_estate.py            # 부동산 분석 (/api/real-estate)
+│   │   │   ├── assistant_router.py       # 레거시 호환 (/api/assistant)
+│   │   │   ├── chat.py                   # 챗봇 API (/api/chat)
+│   │   │   ├── notifications.py          # 알림 API (/api/notifications)
+│   │   │   ├── user.py                   # 사용자 정보 수정 (/api/users)
+│   │   │   └── contact.py                # 문의 접수 (/api/contact)
 │   │   ├── services/
-│   │   │   ├── pdf_parser.py        # PDF 파싱
-│   │   │   ├── analyzer.py          # GPT 계약서 분석
-│   │   │   └── chat_service.py      # RAG 챗봇 로직
+│   │   │   ├── ai_advisor.py             # 카테고리별 AI 분석 (Assistants + Vision)
+│   │   │   ├── pdf_parser.py             # PDF 파싱 (텍스트/이미지 자동 감지)
+│   │   │   ├── analyzer.py               # 레거시 GPT-4o-mini 분석
+│   │   │   ├── chat_service.py           # RAG 챗봇 로직
+│   │   │   └── notification_service.py   # 알림 생성
 │   │   └── rag/
-│   │       └── retriever.py         # 계약서 컨텍스트 조회
-│   ├── requirements.txt
-│   ├── .env                         # 환경 변수
-│   └── readgye.db                   # SQLite DB 파일
+│   │       ├── vectorstore.py            # Qdrant 임베딩 저장/검색
+│   │       └── retriever.py              # 하이브리드 컨텍스트 검색
+│   └── requirements.txt
 │
-└── FE/Front/readgye/                # 프론트엔드
+└── FE/Front/readgye/                     # 프론트엔드
     ├── src/
     │   ├── screens/
-    │   │   ├── HomeScreen.tsx        # 홈 대시보드
-    │   │   ├── LoginScreen.tsx       # 로그인
-    │   │   ├── SignUpScreen.tsx      # 회원가입
-    │   │   ├── UploadScreen.tsx      # PDF 업로드
-    │   │   ├── AnalysisResultScreen.tsx  # 분석 결과
-    │   │   ├── CounselingScreen.tsx  # AI 상담 챗봇
-    │   │   ├── ArchiveScreen.tsx     # 문서 보관함
-    │   │   ├── ProfileScreen.tsx     # 설정/프로필
-    │   │   └── EditProfileScreen.tsx # 프로필 수정
+    │   │   ├── HomeScreen.tsx            # 홈 대시보드 (통계, 최근 문서, 팁)
+    │   │   ├── LoginScreen.tsx           # 로그인 (이메일/Google/게스트)
+    │   │   ├── SignUpScreen.tsx          # 회원가입
+    │   │   ├── UploadScreen.tsx          # PDF 업로드 + 카테고리 선택
+    │   │   ├── AnalysisResultScreen.tsx  # 분석 결과 (조항별 카드)
+    │   │   ├── CounselingScreen.tsx      # AI 상담 챗봇
+    │   │   ├── ArchiveScreen.tsx         # 문서 보관함
+    │   │   ├── ArchiveDetailScreen.tsx   # 문서 상세
+    │   │   ├── SettingsScreen.tsx        # 설정 메인
+    │   │   ├── ProfileScreen.tsx         # 프로필
+    │   │   ├── EditProfileScreen.tsx     # 프로필 수정
+    │   │   ├── ChangePasswordScreen.tsx  # 비밀번호 변경
+    │   │   ├── NotificationListScreen.tsx      # 알림 목록
+    │   │   ├── NotificationSettingsScreen.tsx  # 알림 설정
+    │   │   ├── FAQScreen.tsx             # 자주 묻는 질문
+    │   │   ├── ContactScreen.tsx         # 문의 접수
+    │   │   ├── AdminContactScreen.tsx    # 관리자 문의 관리
+    │   │   ├── TermsScreen.tsx           # 이용약관
+    │   │   ├── OpenSourceScreen.tsx      # 오픈소스 라이선스
+    │   │   ├── MembershipScreen.tsx      # 멤버십
+    │   │   └── PaymentMethodScreen.tsx   # 결제 수단
     │   ├── navigation/
-    │   │   └── TabNavigator.tsx      # 탭 네비게이션
+    │   │   └── TabNavigator.tsx          # 탭 + 스택 네비게이션
     │   ├── context/
-    │   │   └── AuthContext.tsx       # 인증 상태 관리
+    │   │   └── AuthContext.tsx           # 인증 상태 관리 + 알림 폴링
     │   └── constants/
-    │       └── theme.ts             # 디자인 토큰
-    ├── App.tsx                       # 루트 컴포넌트
-    └── package.json
+    │       └── theme.ts                  # 디자인 토큰
+    ├── App.tsx                           # 루트 컴포넌트
+    ├── app.json                          # Expo 설정
+    └── eas.json                          # EAS Build 설정
 ```
 
 ---
@@ -121,12 +158,7 @@ venv\Scripts\activate        # Windows
 # source venv/bin/activate   # Mac/Linux
 
 # 패키지 설치
-pip install fastapi uvicorn[standard] python-multipart sqlalchemy python-jose[cryptography] passlib[bcrypt] python-dotenv pydantic[email] email-validator PyMuPDF openai bcrypt==4.0.1
-
-# 환경 변수 설정 (.env 파일 생성)
-# OPENAI_API_KEY=sk-proj-여기에_키_입력
-# SECRET_KEY=아무_비밀_문자열
-# ALGORITHM=HS256
+pip install -r requirements.txt
 
 # 서버 실행
 uvicorn app.main:app --reload
@@ -146,26 +178,58 @@ npm install
 
 # 실행
 npm start          # Expo 개발 서버
-npm run web        # 웹 브라우저에서 실행
 npm run android    # Android 에뮬레이터
 npm run ios        # iOS 시뮬레이터
 ```
 
-프론트엔드가 `http://localhost:8081`에서 실행됩니다.
+### 3. APK 빌드 (EAS)
+
+```bash
+# 플레이스토어용 AAB 빌드
+eas build --platform android --profile production
+
+# 직접 설치용 APK 빌드
+eas build --platform android --profile apk
+```
 
 ---
 
-## 환경 변수 (.env)
+## 환경 변수
 
-`BE/.env` 파일에 다음 값을 설정합니다:
+### 백엔드 (`BE/.env`)
 
 ```env
-OPENAI_API_KEY=sk-proj-...    # OpenAI API 키 (필수)
-SECRET_KEY=my_secret_key      # JWT 서명 키 (아무 문자열)
-ALGORITHM=HS256               # JWT 알고리즘 (변경 불필요)
+# 필수
+OPENAI_API_KEY=sk-proj-...         # OpenAI API 키
+SECRET_KEY=my_secret_key           # JWT 서명 키
+ALGORITHM=HS256
+
+# OpenAI Assistants (카테고리별)
+REAL_ESTATE_ASSISTANT_ID=asst_...  # 부동산 전문 Assistant
+WORK_ASSISTANT_ID=asst_...         # 근로/용역 전문 Assistant
+CONSUMER_ASSISTANT_ID=asst_...     # 소비자 서비스 전문 Assistant
+NDA_ASSISTANT_ID=asst_...          # NDA/전직금지 전문 Assistant
+GENERAL_ASSISTANT_ID=asst_...      # 일반 계약 전문 Assistant
+
+# Qdrant 벡터 DB
+QDRANT_URL=https://xxx.qdrant.io:6333
+QDRANT_API_KEY=...
+QDRANT_COLLECTION=readgye_clause_embeddings
+
+# DB (선택 - 미지정 시 SQLite 사용)
+DATABASE_URL=mysql+pymysql://user:pass@host:3306/dbname
 ```
 
-OpenAI API 키는 https://platform.openai.com/api-keys 에서 발급받을 수 있습니다.
+### 프론트엔드 (`FE/Front/readgye/.env`)
+
+```env
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...
+EXPO_PUBLIC_API_BASE_URL=https://your-backend.railway.app
+EXPO_PUBLIC_GUEST_EMAIL=...
+EXPO_PUBLIC_GUEST_PASSWORD=...
+```
+
+> EAS Cloud Build 사용 시 `.env` 대신 EAS 대시보드 Secrets에 등록하거나 `eas env:create` 명령어를 사용하세요.
 
 ---
 
@@ -175,24 +239,49 @@ OpenAI API 키는 https://platform.openai.com/api-keys 에서 발급받을 수 �
 
 | 메서드 | 경로 | 인증 | 설명 |
 |--------|------|------|------|
-| POST | `/api/auth/signup` | - | 회원가입 (email, password, name) |
-| POST | `/api/auth/login` | - | 로그인 → JWT 토큰 반환 |
-| GET | `/api/auth/me` | Bearer | 현재 사용자 정보 조회 |
+| POST | `/api/auth/signup` | - | 회원가입 |
+| POST | `/api/auth/login` | - | 이메일 로그인 → JWT 반환 |
+| GET | `/api/auth/me` | Bearer | 현재 사용자 정보 |
 
-### 문서 분석 (`/api/analyze`)
+### 계약서 분석
 
-| 메서드 | 경로 | 인증 | 설명 |
+| 메서드 | 경로 | 인증 | 카테고리 |
 |--------|------|------|------|
-| POST | `/api/analyze` | Bearer | PDF 업로드 → AI 분석 실행 |
-| GET | `/api/analyze/{id}/result` | - | 분석 결과 조회 |
+| GET | `/api/analyze` | Bearer | 내 문서 목록 조회 |
+| GET | `/api/analyze/{id}/result` | Bearer | 분석 결과 상세 |
+| DELETE | `/api/analyze/{id}` | Bearer | 문서 삭제 |
+| POST | `/api/general/work` | Bearer | 근로/용역 계약 |
+| POST | `/api/general/consumer` | Bearer | 소비자 서비스 계약 |
+| POST | `/api/general/nda` | Bearer | NDA / 전직금지 |
+| POST | `/api/general/other` | Bearer | 기타 계약서 |
+| POST | `/api/real-estate/analyze` | Bearer | 부동산 계약서 |
 
 ### AI 상담 (`/api/chat`)
 
 | 메서드 | 경로 | 인증 | 설명 |
 |--------|------|------|------|
-| POST | `/api/chat` | Bearer | 메시지 전송 → AI 응답 |
+| POST | `/api/chat` | Bearer | 메시지 전송 → AI 응답 + Citations |
 | GET | `/api/chat/sessions` | Bearer | 상담 세션 목록 |
 | GET | `/api/chat/sessions/{id}/messages` | Bearer | 세션 메시지 조회 |
+
+### 알림 (`/api/notifications`)
+
+| 메서드 | 경로 | 인증 | 설명 |
+|--------|------|------|------|
+| GET | `/api/notifications` | Bearer | 알림 목록 |
+| GET | `/api/notifications/unread` | Bearer | 읽지 않은 알림 |
+| POST | `/api/notifications/read-all` | Bearer | 전체 읽음 처리 |
+| GET | `/api/notifications/settings` | Bearer | 알림 설정 조회 |
+| PUT | `/api/notifications/settings` | Bearer | 알림 설정 변경 |
+
+### 사용자 / 문의
+
+| 메서드 | 경로 | 인증 | 설명 |
+|--------|------|------|------|
+| PUT | `/api/users/me` | Bearer | 프로필 수정 |
+| POST | `/api/contact` | Bearer | 문의 접수 |
+| GET | `/api/contact/admin` | Admin | 문의 목록 조회 |
+| PATCH | `/api/contact/admin/{id}` | Admin | 문의 상태 변경 |
 
 ---
 
@@ -202,97 +291,100 @@ OpenAI API 키는 https://platform.openai.com/api-keys 에서 발급받을 수 �
 users (사용자)
  ├── documents (업로드한 계약서)
  │    └── clauses (조항)
- │         └── clause_analysis (AI 분석 결과)
+ │         ├── clause_analysis (AI 분석 결과)
+ │         └── clause_embeddings (벡터 임베딩)
  │
- └── chat_sessions (상담 세션)
-      └── chat_messages (대화 메시지)
+ ├── chat_sessions (상담 세션)
+ │    └── chat_messages (대화 메시지)
+ │
+ ├── notifications (알림)
+ ├── notification_settings (알림 설정)
+ └── contact_inquiries (문의)
 ```
 
 | 테이블 | 주요 컬럼 | 설명 |
 |--------|-----------|------|
-| `users` | id, email, hashed_password, name | 사용자 계정 |
+| `users` | id, email, hashed_password, name, is_admin | 사용자 계정 |
 | `documents` | id, filename, status, owner_id | 업로드된 계약서 |
 | `clauses` | id, document_id, clause_number, title, body | 계약서 조항 |
-| `clause_analysis` | id, clause_id, risk_level, summary, suggestion | AI 분석 결과 |
-| `chat_sessions` | id, user_id, document_id, title | 상담 대화 세션 |
-| `chat_messages` | id, session_id, role, content | 개별 메시지 |
+| `clause_analysis` | id, clause_id, risk_level, summary, suggestion, tags | AI 분석 결과 |
+| `clause_embeddings` | id, clause_id, user_id, document_id, embedding_json | 벡터 임베딩 |
+| `chat_sessions` | id, user_id, document_id, title | 상담 세션 |
+| `chat_messages` | id, session_id, role, content | 대화 메시지 |
+| `notifications` | id, user_id, document_id, title, message, is_read | 알림 |
+| `notification_settings` | id, user_id, push_enabled, analysis_complete, ... | 알림 설정 |
+| `contact_inquiries` | id, user_id, category, title, content, status | 문의 |
 
 - `risk_level`: `HIGH` (위험) / `MEDIUM` (주의) / `LOW` (안전)
 - `status`: `uploaded` → `analyzing` → `done` / `failed`
-- `role`: `user` (사용자) / `assistant` (AI)
+- `role`: `user` / `assistant`
 
 ---
 
 ## 전체 동작 흐름
 
-```
-[사용자]
-   │
-   ├─── 회원가입/로그인 ──→ POST /api/auth/signup, /login
-   │                         → JWT 토큰 발급
-   │
-   ├─── PDF 업로드 ────────→ POST /api/analyze
-   │                         → PDF 파싱 (텍스트 or 이미지)
-   │                         → GPT-4o-mini 분석
-   │                         → DB 저장 (Document → Clause → ClauseAnalysis)
-   │                         → 분석 결과 반환
-   │
-   └─── AI 상담 질문 ──────→ POST /api/chat
-                              → DB에서 사용자의 분석된 조항 조회 (RAG)
-                              → 대화 히스토리 로드
-                              → 시스템 프롬프트 + 컨텍스트 + 질문 조합
-                              → GPT-4o-mini 호출
-                              → 응답 저장 + 반환
-```
-
----
-
-## 주요 기능 상세
-
-### 1. PDF 분석 파이프라인
+### 계약서 분석 파이프라인
 
 ```
-PDF 파일
+PDF 업로드 (카테고리 선택)
   ↓
 pdf_parser.py: 텍스트 추출 시도
-  ├── 텍스트 PDF → 텍스트 반환
-  └── 스캔 PDF (텍스트 50자 미만) → 페이지를 이미지로 변환 (Base64)
+  ├── 텍스트 50자 이상 → 텍스트 PDF
+  └── 텍스트 50자 미만 → 스캔본 (페이지를 PNG 이미지로 변환, 2배 해상도)
   ↓
-analyzer.py: GPT-4o-mini에 분석 요청
+ai_advisor.py: 카테고리별 분석
+  ├── 텍스트 PDF → OpenAI Assistants API (file_search)
+  └── 스캔본     → GPT-4o Vision (Base64 이미지 직접 전달, 최대 10페이지)
   ↓
-조항별 결과: clause_number, title, risk_level, summary, suggestion
+JSON 정제 (_clean_json)
+  ↓
+Gatekeeper 검증
+  ├── NOT_A_CONTRACT   → "분석 불가 (계약서 아님)"
+  └── MISMATCH_CATEGORY → "분석 불가 (카테고리 불일치)"
   ↓
 DB 저장: Document → Clause → ClauseAnalysis
+  ↓
+Qdrant 벡터 임베딩 저장 (text-embedding-3-small)
+  ↓
+알림 발송 → 앱 폴링 (8초) → 사용자 알림
 ```
 
-### 2. RAG 챗봇 아키텍처
-
-벡터 DB 없이 SQLite 직접 조회 방식으로 구현:
+### RAG 챗봇 파이프라인
 
 ```
 사용자 질문
   ↓
-retriever.py: DB에서 사용자의 분석된 조항 조회 (최대 50개)
+쿼리 임베딩 생성 (text-embedding-3-small)
   ↓
-텍스트로 포맷:
-  === 문서: 계약서.pdf ===
-  [제3조 - 지적재산권] 위험도: HIGH, 분석: ..., 수정제안: ...
+Qdrant 벡터 검색 (top_k × 5개 후보)
   ↓
-chat_service.py: 시스템 프롬프트에 삽입 + 대화 히스토리(최근 10개) + 질문
+하이브리드 스코어링
+  ├── 코사인 유사도
+  ├── 렉시컬 점수 (토큰 매칭, 가중치 0.1)
+  └── 위험도 부스트 (HIGH: +0.05 / MEDIUM: +0.02)
   ↓
-GPT-4o-mini 호출 → 응답 저장 → 반환
+min_similarity 필터 + 재정렬
+  ↓
+컨텍스트 포맷팅 (최대 12,000자)
+  ↓
+GPT-4o-mini 호출
+  ├── 시스템 프롬프트 + 컨텍스트
+  ├── 대화 히스토리 (최근 10개)
+  └── 사용자 질문
+  ↓
+응답 + Citations 반환
 ```
 
-### 3. 인증 흐름
+### 인증 흐름
 
 ```
 이메일 로그인: POST /api/auth/login (form-urlencoded) → JWT 토큰
 이메일 가입:   POST /api/auth/signup (JSON) → 자동 로그인
-게스트 로그인: 프론트에서 자동 계정 생성 → 백엔드 가입+로그인
-Google OAuth: expo-auth-session → 프론트에서 처리
+게스트 로그인: 프론트에서 고정 계정으로 백엔드 가입+로그인 자동 처리
+Google OAuth:  @react-native-google-signin → 네이티브 로그인 → 백엔드 JWT 발급
 ```
 
-JWT 토큰은 7일간 유효하며, `Authorization: Bearer <token>` 헤더로 인증합니다.
+JWT 토큰은 `Authorization: Bearer <token>` 헤더로 전달됩니다.
 
 ---
 
@@ -300,19 +392,29 @@ JWT 토큰은 7일간 유효하며, `Authorization: Bearer <token>` 헤더로 �
 
 | 탭 | 화면 | 기능 |
 |----|------|------|
-| 홈 | HomeScreen | 대시보드, 통계, "새 계약서 분석하기" 버튼 |
-| 홈 → | UploadScreen | PDF 파일 선택 + 업로드 |
-| 홈 → → | AnalysisResultScreen | 분석 결과 (위험도별 카드) |
-| 보관함 | ArchiveScreen | 분석된 문서 목록, 검색, 필터 |
-| 상담 | CounselingScreen | AI 챗봇 (추천 질문, 대화, 복사) |
-| 설정 | ProfileScreen | 프로필, 계정 설정, 로그아웃 |
-| 설정 → | EditProfileScreen | 개인정보 조회/수정 |
+| 홈 | HomeScreen | 대시보드, 통계 카드, 최근 문서, 계약 팁 |
+| 홈 → | UploadScreen | 카테고리 선택 + PDF 업로드 |
+| 홈 → → | AnalysisResultScreen | 조항별 위험도 카드, 법적 근거, 수정 제안 |
+| 홈 → | NotificationListScreen | 알림 목록 |
+| 보관함 | ArchiveScreen | 문서 목록, 검색, 위험도 필터 |
+| 보관함 → | ArchiveDetailScreen | 문서 상세 조회 |
+| 상담 | CounselingScreen | AI 챗봇 (추천 질문, 다중 세션, 복사) |
+| 설정 | SettingsScreen | 프로필, 알림, 문의, 약관 |
+| 설정 → | EditProfileScreen | 이름/이메일 수정 |
+| 설정 → | ChangePasswordScreen | 비밀번호 변경 |
+| 설정 → | NotificationSettingsScreen | 푸시/이메일 알림 설정 |
+| 설정 → | ContactScreen | 문의 접수 |
+| 설정 → | AdminContactScreen | 관리자 문의 관리 |
+| 설정 → | FAQScreen | 자주 묻는 질문 |
+| 설정 → | TermsScreen | 이용약관 |
 
 ---
 
 ## 참고 사항
 
 - **bcrypt 버전**: `passlib`과의 호환성을 위해 `bcrypt==4.0.1`을 사용합니다. (5.x 호환 안됨)
-- **CORS**: 개발 환경에서는 `allow_origins=["*"]`로 설정되어 있습니다. 배포 시 프론트엔드 도메인으로 제한하세요.
-- **SQLite**: 개발/데모용입니다. 프로덕션에서는 PostgreSQL 등으로 전환을 권장합니다.
-- **API 키**: OpenAI API 키가 유효해야 PDF 분석과 챗봇이 동작합니다.
+- **CORS**: 현재 `allow_origins=["*"]`로 설정되어 있습니다. 배포 시 프론트엔드 도메인으로 제한하세요.
+- **DB**: Railway 배포 환경에서는 MySQL, 로컬에서는 SQLite를 사용합니다.
+- **Assistants API**: 카테고리별로 별도의 OpenAI Assistant를 생성하고 `.env`에 ID를 등록해야 합니다.
+- **Qdrant**: 미설정 시 로컬 `.qdrant/` 경로에 파일 기반으로 동작합니다.
+- **EAS Build**: `eas build --platform android --profile production` 명령어로 빌드합니다. 환경변수는 EAS 대시보드 Secrets에 등록하세요.
