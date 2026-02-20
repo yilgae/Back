@@ -78,21 +78,24 @@ POLAR_ACCESS_TOKEN = os.getenv("POLAR_ACCESS_TOKEN")
 POLAR_PRODUCT_ID = os.getenv("POLAR_PRODUCT_ID")
 
 @router.post("/polar/checkout")
-def create_polar_checkout(current_user: contract.User = Depends(get_current_user)):
-    """프론트엔드에서 호출하면 Polar 결제창 URL을 만들어줍니다."""
-    url = "https://api.polar.sh/v1/checkouts/custom/"
+def create_polar_checkout(
+    plan_type: str = Body(..., embed=True), # 👈 "monthly" 또는 "yearly" 수신
+    current_user: contract.User = Depends(get_current_user)
+):
+    # 플랜 타입에 따라 ID 선택
+    product_id = os.getenv("POLAR_YEARLY_PRODUCT_ID") if plan_type == "yearly" else os.getenv("POLAR_MONTHLY_PRODUCT_ID")
     
+    url = "https://api.polar.sh/v1/checkouts/custom/"
     headers = {
-        "Authorization": f"Bearer {POLAR_ACCESS_TOKEN}",
+        "Authorization": f"Bearer {os.getenv('POLAR_ACCESS_TOKEN')}",
         "Content-Type": "application/json"
     }
     
-    # 결제창 생성 데이터
     payload = {
-        "product_id": POLAR_PRODUCT_ID,
-        "customer_email": current_user.email, # 유저 이메일 자동 채워주기
-        "success_url": "https://polar.sh",   # 해커톤 데모용 (앱으로 돌아가기 위해 임의의 안전한 주소 사용)
-        "metadata": {"user_id": str(current_user.id)} # 결제 성공 시 누구인지 알기 위한 태그
+        "product_id": product_id, # 👈 선택된 ID 사용
+        "customer_email": current_user.email,
+        "success_url": "https://polar.sh",
+        "metadata": {"user_id": str(current_user.id), "plan": plan_type}
     }
     
     response = requests.post(url, json=payload, headers=headers)
