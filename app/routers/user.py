@@ -126,3 +126,8 @@ def cancel_premium_demo(
     current_user.is_premium = False
     db.commit()
     return {"message": "프리미엄 해지 성공!", "is_premium": False}
+
+@router.get("/me", response_model=schemas.UserResponse)
+def get_me(current_user: contract.User = Depends(get_current_user)):
+    """현재 로그인한 유저의 최신 DB 정보를 반환합니다."""
+    return current_user
