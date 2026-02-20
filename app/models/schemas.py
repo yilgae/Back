@@ -31,7 +31,7 @@ class DocumentResponse(BaseModel):
     created_at: datetime
     risk_count: int
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Home Dashboard 관련 ---
 class HomeDashboardResponse(BaseModel):
